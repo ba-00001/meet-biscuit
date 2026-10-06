@@ -40,6 +40,14 @@
     font: 700 clamp(30px, 8vw, 40px)/1.1 var(--display);
     margin: 24px 0 8px;
   }
+  h2 {
+    font: 700 22px/1.2 var(--display);
+    margin: 4px 0 12px;
+  }
+  .caption { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+  .code { margin: -14px 0 22px; text-align: center; font-size: 15px; color: var(--muted); }
+  .flyer { font-size: 15px; }
+  .flyer a { color: var(--accent); font-weight: 600; }
   .sub { margin: 0 0 18px; color: var(--muted); }
   .cta { display: grid; gap: 10px; margin: 20px 0 26px; }
   .cta a {
@@ -66,30 +74,46 @@
 </head>
 <body>
 <main>
+  <h2>Watch Biscuit's video</h2>
   <video src="biscuit-story.mp4" poster="poster.jpg" autoplay muted loop playsinline controls preload="metadata"></video>
+  <p class="caption">Play-yard scenes made with AI from his photo. Class exercise; the shelter is fictional.</p>
 
   <h1>Don't judge Biscuit by his kennel.</h1>
   <p class="sub">He's nervous in his kennel run. In the play yard, he's a different dog.</p>
 
-  <p>Biscuit has been with us since January, and he isn't on our website, so most people don't know he's here. Ask to meet him in the play yard. One-on-one, he leans on your leg for the whole visit.</p>
+  <p>Biscuit has been with us since January, and he isn't on our website, so you may not know he's here. Ask to meet him in the play yard. One-on-one, he leans on you.</p>
 
   <div class="cta">
     <a class="call" href="tel:+15550102200">Call to meet him: (555) 010-2200</a>
-    <a class="mail" href="mailto:adopt@secondchancerescue.example.org?subject=Meeting%20Biscuit">Email the adoption team</a>
+    <a class="mail" id="mail" href="mailto:adopt@secondchancerescue.example.org?subject=Meeting%20Biscuit%20(web)">Email the adoption team</a>
   </div>
+  <p class="code" id="code" hidden></p>
 
   <ul>
     <li>Male shepherd mix, about 3, large</li>
     <li>House trained, neutered, vaccinated, heartworm negative</li>
-    <li>Ignored the office cat during testing</li>
-    <li>OK with some dogs, with slow introductions</li>
+    <li>Ask us about cats</li>
+    <li>Some dogs OK, with slow introductions</li>
     <li>No chicken in his food, please</li>
     <li>Adoption fee: $150</li>
   </ul>
 
-  <p class="where">Second Chance Rescue · 2201 County Road 12, Whitcomb</p>
+  <p class="where">Second Chance Rescue (fictional) · 2201 County Road 12, Whitcomb</p>
 
-  <p class="note">This page is a class exercise for MDC Basecamp 2026. Second Chance Rescue, Biscuit, the phone number and the email address are all made up. The play yard footage is AI-generated from his photo, and the photo was edited with AI to remove kennel bars.</p>
+  <p class="flyer"><a href="biscuit-flyer.pdf">Download the flyer (PDF)</a></p>
+
+  <p class="note">Class exercise for MDC Basecamp 2026. Second Chance Rescue, Biscuit's story, the address, phone and email are made up; this page is not connected to any real shelter of that name. The yard photo and play-yard video were made with AI from his kennel photo. Dog photo: MDC Basecamp 2026 course materials. Not an official MDC or CodePath page.</p>
 </main>
+<script>
+  // Tag emails and calls with where the visitor came from (?src=flyer on the flyer QR code).
+  var src = (new URLSearchParams(location.search).get("src") || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 20);
+  if (src) {
+    var mail = document.getElementById("mail");
+    mail.href = mail.href.replace("(web)", "(" + src + ")");
+    var code = document.getElementById("code");
+    code.textContent = "Calling? Mention code " + src.toUpperCase() + ".";
+    code.hidden = false;
+  }
+</script>
 </body>
 </html>

@@ -1,9 +1,18 @@
-"""Render Biscuit's ~36-second vertical story video (1080x1920, 30 fps, H.264).
+"""Render Biscuit's 30-second vertical story video (1080x1920, 30 fps, H.264 + AAC).
 
-Usage: python src/render_video.py <assets_dir> <out.mp4>
-assets_dir holds biscuit.jpg, biscuit-clean.jpg (bars removed with AI), yard-clip.mp4
-(AI image-to-video), note.png (staff sticky note, transparent corners),
-fonts/*.ttf and tokens.json (palette + font files).
+Usage:
+  python src/render_video.py <assets_dir> <out.mp4>            full render (+ poster.jpg beside it)
+  python src/render_video.py <assets_dir> <out.mp4> 3.3 13.5   preview frames only (preview_<s>.jpg)
+
+assets_dir holds biscuit.jpg (real kennel photo), biscuit-clean.jpg (bars removed and yard
+background added with AI), yard-clip.mp4 (AI image-to-video of the clean photo), note.png
+(staff sticky note, transparent corners), cartoon/{walk-a,walk-b,sit,wave}.png (optional,
+transparent; the cartoon is skipped if any is missing), fonts/*.ttf and tokens.json
+(palette + font files).
+
+Timeline (s): 0-4.4 kennel photo, 4.4-7.4 staff note, 7.4-8.6 the bars wipe away,
+8.6-17.6 play-yard clip (with its own audio), 17.6-23.6 clean photo while the cartoon
+walks by, 23.6-30 end card with phone, email and the AI disclosure.
 """
 import functools
 import json
@@ -12,9 +21,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H, FPS = 1080, 1920, 30
+DURATION = 30.0
 ASSETS = Path(sys.argv[1])
 OUT = sys.argv[2]
 T = json.loads((ASSETS / "tokens.json").read_text())
@@ -37,10 +47,6 @@ def ease(x):
 
 def fade(t, start, dur=0.6):
     return ease((t - start) / dur)
-
-
-def lerp(a, b, k):
-    return tuple(int(a[i] + (b[i] - a[i]) * k) for i in range(3))
 
 
 def text_block(img, lines, y, role, size, color, alpha, max_w=920, gap=1.18, align="center"):
@@ -86,11 +92,53 @@ def paste_center(img, src, cx, cy, scale, alpha=1.0, angle=0.0, shadow=True):
     img.alpha_composite(s, (int(cx - s.width / 2), int(cy - s.height / 2)))
 
 
+def cover(src, z, fx, fy, ax, ay):
+    """Fill the frame from src at zoom z (1 = cover), putting source point (fx, fy) at screen
+    point (ax, ay), all as 0-1 fractions. The crop box is clamped inside the source."""
+    sw, sh = src.size
+    k = max(W / sw, H / sh) * z
+    bw, bh = W / k, H / k
+    x0 = min(max(0.0, fx * sw - ax * bw), sw - bw)
+    y0 = min(max(0.0, fy * sh - ay * bh), sh - bh)
+    return src.resize((W, H), Image.BICUBIC, box=(x0, y0, x0 + bw, y0 + bh)).convert("RGBA")
+
+
+def gradient(img, top=True, strength=170, height=760):
+    g = Image.linear_gradient("L").resize((W, height))
+    if top:
+        g = g.transpose(Image.FLIP_TOP_BOTTOM)
+    layer = Image.new("RGBA", (W, height), (0, 0, 0, 0))
+    layer.putalpha(g.point(lambda p: int(p * strength / 255)))
+    img.alpha_composite(layer, (0, 0 if top else H - height))
+
+
 photo = Image.open(ASSETS / "biscuit.jpg").convert("RGB")
-photo_grey = ImageEnhance.Brightness(ImageEnhance.Color(photo).enhance(0.15)).enhance(0.7)
-clean = Image.open(ASSETS / "biscuit-clean.jpg").convert("RGB").resize((560, 560), Image.LANCZOS)
+clean = Image.open(ASSETS / "biscuit-clean.jpg").convert("RGB")
 note = Image.open(ASSETS / "note.png").convert("RGBA")
 CLIP = ASSETS / "yard-clip.mp4"  # AI-generated (Veo) image-to-video of the clean photo
+EYE = (0.485, 0.385)  # his near eye; same spot in both photos (the clean one is registered to the original)
+
+CARTOON_DIR = ASSETS / "cartoon"
+HAS_CARTOON = all((CARTOON_DIR / f"{n}.png").exists() for n in ("walk-a", "walk-b", "sit", "wave"))
+
+
+@functools.lru_cache(maxsize=None)
+def cartoon(name, height, flip=False):
+    im = Image.open(CARTOON_DIR / f"{name}.png").convert("RGBA")
+    im = im.crop(im.getbbox())
+    im = im.resize((round(im.width * height / im.height), height), Image.LANCZOS)
+    return im.transpose(Image.FLIP_LEFT_RIGHT) if flip else im
+
+
+def put_cartoon(img, name, height, cx, bottom, flip=False):
+    """Place a cartoon pose by its bottom centre, with a soft ground shadow."""
+    c = cartoon(name, height, flip)
+    sw = int(c.width * 0.8)
+    sh = Image.new("RGBA", (sw + 60, 90), (0, 0, 0, 0))
+    ImageDraw.Draw(sh).ellipse((30, 30, 30 + sw, 60), fill=(0, 0, 0, 70))
+    sh = sh.filter(ImageFilter.GaussianBlur(10))
+    img.alpha_composite(sh, (int(cx - sh.width / 2), int(bottom - 45)))
+    img.alpha_composite(c, (int(cx - c.width / 2), int(bottom - c.height)))
 
 
 def probe_duration(path):
@@ -114,6 +162,7 @@ class ClipReader:
                                       "-vf", vf, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
 
     def get(self, local_t, sequential=True):
+        local_t = max(0.0, min(local_t, CLIP_LEN - 1 / FPS))
         want = int(local_t * FPS)
         if not sequential:
             self._open(local_t)
@@ -133,115 +182,134 @@ class ClipReader:
 
 
 CLIP_LEN = min(probe_duration(CLIP), 10.0)
+CLIP_IN = 1.0  # clip second shown at YARD (skips the far-away first second)
 clip = ClipReader(CLIP)
 SEQUENTIAL = True
 
-# Scene timeline in seconds: name, title, wait, staff note, yard clip, good to know, call to action.
-S = [0, 4.5, 9, 13.5, 19]
-S += [S[4] + CLIP_LEN, S[4] + CLIP_LEN + 5.5, S[4] + CLIP_LEN + 11.5]
-DURATION = S[-1]
+# Shot boundaries (s): kennel photo, note, wipe, yard clip, clean photo, end card.
+NOTE, WIPE, YARD, PHOTO, END = 4.4, 7.4, 8.6, 17.6, 23.6
+XF = 0.3  # crossfade between shots, centred on each boundary
 
 
-def gradient(img, top=True, strength=170):
-    g = Image.linear_gradient("L").resize((W, 700))
-    if top:
-        g = g.transpose(Image.FLIP_TOP_BOTTOM)
-    layer = Image.new("RGBA", (W, 700), (0, 0, 0, 0))
-    layer.putalpha(g.point(lambda p: int(p * strength / 255)))
-    img.alpha_composite(layer, (0, 0 if top else H - 700))
+def shot_kennel(t):
+    if t < 2.2:  # slow pull-out on his eyes
+        return cover(photo, 1.15 - 0.10 * ease(t / 2.2), *EYE, 0.65, 0.42)
+    k = ease((t - 2.2) / 2.2)  # slow drift down the photo
+    return cover(photo, 1.05, EYE[0], EYE[1] + 0.05 * k, 0.65, 0.42)
+
+
+def shot_note(t):
+    img = Image.new("RGBA", (W, H), C["paper"] + (255,))
+    k = ease((t - NOTE) / (WIPE - NOTE))  # push-in 100 -> 110%
+    paste_center(img, note, W / 2, 860, 1.55 * (1 + 0.10 * k))
+    return img
+
+
+def shot_wipe(t):
+    z = 1.05 + 0.03 * ease((t - WIPE) / (YARD - WIPE))
+    a = cover(photo, z, EYE[0], EYE[1] + 0.05, 0.65, 0.42)
+    b = cover(clean, z, EYE[0], EYE[1] + 0.05, 0.65, 0.42)
+    edge = ease((t - WIPE - 0.3) / 0.6) * (W + 160) - 80  # bars wipe away left to right over 0.6 s
+    row = bytes(max(0, min(255, int((edge - x) * 255 / 80 + 128))) for x in range(W))
+    a.paste(b, (0, 0), Image.frombytes("L", (W, 1), row).resize((W, H), Image.NEAREST))
+    return a
+
+
+def shot_yard(t):
+    f = clip.get(t - YARD + CLIP_IN, sequential=SEQUENTIAL)
+    return f.convert("RGBA") if f is not None else Image.new("RGBA", (W, H), C["ink"] + (255,))
+
+
+def shot_photo(t):
+    # Bottom-anchored so his chin stays above the cartoon's lane; slow push and pan.
+    k = ease((t - PHOTO) / (END - PHOTO))
+    return cover(clean, 1.08 + 0.07 * k, 0.40, 1.0, 0.52 + 0.08 * k, 1.0)
+
+
+def shot_end(t):
+    return Image.new("RGBA", (W, H), C["accent"] + (255,))
+
+
+# (start, end, render, has light captions over a picture)
+SHOTS = [(0, NOTE, shot_kennel, True), (NOTE, WIPE, shot_note, False), (WIPE, YARD, shot_wipe, True),
+         (YARD, PHOTO, shot_yard, True), (PHOTO, END, shot_photo, True), (END, DURATION, shot_end, False)]
+
+
+def render_shot(i, t):
+    img = SHOTS[i][2](t)
+    if SHOTS[i][3]:  # soft top gradient behind the light captions
+        gradient(img, top=True, strength=185)
+    return img
+
+
+def background(t):
+    i = max(j for j, s in enumerate(SHOTS) if t >= s[0])
+    img = render_shot(i, t)
+    if i + 1 < len(SHOTS) and t > SHOTS[i][1] - XF / 2:
+        w = ease((t - SHOTS[i][1] + XF / 2) / XF)
+        return Image.blend(img, render_shot(i + 1, t), w)
+    if i > 0 and t < SHOTS[i][0] + XF / 2:
+        w = ease((t - SHOTS[i][0] + XF / 2) / XF)
+        return Image.blend(render_shot(i - 1, t), img, w)
+    return img
+
+
+# Light captions over the photos and the clip: (start, end, lines). Max 7 words each.
+CARDS = [
+    (0.0, 2.2, ["Staff left a note", "about him."]),
+    (2.2, NOTE, ["Biscuit. Stray.", "Here since January 15."]),
+    (WIPE, 10.4, ["Out in the yard?", "Different dog."]),
+    (12.6, 15.1, ["One-on-one,", "he leans on you."]),
+    (15.1, PHOTO, ["House trained.", "Neutered. Vaccinated."]),
+    (PHOTO, 19.7, ["Shepherd mix,", "about 3, large."]),
+    (19.7, 21.7, ["Some dogs OK,", "slow intros."]),
+    (21.7, END, ["Ask us about cats."]),
+]
+
+
+def card_alpha(t, t0, t1, fin=0.35, fout=0.25):
+    return fade(t, t0 + 0.05, fin) * (1 - fade(t, t1 - fout, fout))
 
 
 def frame(t):
-    dark, light = C["ink"], C["paper"]
-    if t < S[2]:
-        bg = dark
-    elif t < S[3]:
-        bg = lerp(dark, C["deep"], fade(t, S[2], 1.2))
-    elif t < S[6]:
-        bg = lerp(C["deep"], light, fade(t, S[3], 1.0))
-    else:
-        bg = lerp(light, C["accent"], fade(t, S[6], 0.8))
-    img = Image.new("RGBA", (W, H), bg + (255,))
+    img = background(t)
+    on = C["on_accent"]
 
-    if t < S[3]:
-        # Scenes 1-3: the real kennel photo. Colour drains in scene 2, shrinks in scene 3.
-        k = (t - S[0]) / (S[3] - S[0])
-        scale = 1.9 + 0.25 * k
-        if t >= S[2]:
-            scale *= 1 - 0.35 * fade(t, S[2], 1.4)
-        src = photo if t < S[1] else Image.blend(photo, photo_grey, fade(t, S[1], 1.2))
-        out = 1 - fade(t, S[3] - 0.6, 0.6)
-        paste_center(img, src, W / 2, 920 - 260 * fade(t, S[2], 1.4), scale, alpha=out)
+    for t0, t1, lines in CARDS:
+        if t0 <= t < t1:
+            text_block(img, lines, 230, "display", 100, C["paper"], card_alpha(t, t0, t1), max_w=1000)
 
-    # Scene 1
-    if t < S[1] + 0.4:
-        a = fade(t, 0.5) * (1 - fade(t, S[1] - 0.2, 0.6))
-        text_block(img, ["This is Biscuit."], 230, "display", 120, light, a)
-        text_block(img, ["Shepherd mix · about 3 years old"], 1480, "body", 52, C["muted_on_dark"], fade(t, 1.6) * (1 - fade(t, S[1] - 0.2, 0.6)))
-    # Scene 2
-    if S[1] - 0.2 < t < S[2] + 0.4:
-        a = fade(t, S[1] + 0.2) * (1 - fade(t, S[2] - 0.2, 0.6))
-        text_block(img, ["In his kennel,", "he’s nervous."], 150, "display", 96, light, a)
-        text_block(img, ["Most people walk right past him."], 1480, "body", 58, light, fade(t, S[1] + 1.8) * (1 - fade(t, S[2] - 0.2, 0.6)))
-    # Scene 3
-    if S[2] - 0.2 < t < S[3] + 0.2:
-        a = fade(t, S[2] + 0.4) * (1 - fade(t, S[3] - 0.5, 0.5))
-        y = text_block(img, ["He’s been waiting", "since January."], 1130, "display", 100, light, a, max_w=980)
-        text_block(img, ["He isn’t even on our website."], y + 40, "body", 54, C["muted_on_dark"], fade(t, S[2] + 1.8) * (1 - fade(t, S[3] - 0.5, 0.5)))
+    if NOTE <= t < WIPE:
+        text_block(img, ["Kennel staff note"], 1460, "body", 46, C["muted_on_light"], card_alpha(t, NOTE + 0.4, WIPE))
 
-    # Scene 4: staff sticky note, quoted large so it reads on a phone.
-    if S[3] - 0.2 < t < S[4] + 0.6:
-        out = 1 - fade(t, S[4] - 0.3, 0.6)
-        text_block(img, ["What his caretakers say:"], 200, "body", 56, C["ink"], fade(t, S[3] + 0.4) * out)
-        drop = 1 - ease((t - S[3] - 0.6) / 0.8)
-        paste_center(img, note, W / 2, 780 - 300 * drop, 1.3, alpha=fade(t, S[3] + 0.6, 0.5) * out, angle=-3 + 3 * drop)
-        text_block(img, ["“Total sweetheart in the yard.", "Don’t judge him at the front!”"], 1260, "display", 70, C["ink"], fade(t, S[3] + 2.0) * out, max_w=980)
-        text_block(img, ["Kennel staff note"], 1480, "body", 46, C["muted_on_light"], fade(t, S[3] + 2.6) * out)
+    if HAS_CARTOON and PHOTO <= t < 23.4:  # walks left to right along the bottom 15%
+        step = (t - PHOTO) / 0.18
+        cx = -180 + (t - PHOTO) / (23.4 - PHOTO) * (W + 360)
+        put_cartoon(img, ("walk-a", "walk-b")[int(step) % 2], 250, cx, 1895 - 8 * math.sin(math.pi * (step % 1)))
 
-    # Scene 5: the play yard, full-bleed AI clip made from his cleaned-up photo.
-    if S[4] - 0.3 < t < S[5] + 0.6:
-        a = fade(t, S[4] - 0.3, 0.6) * (1 - fade(t, S[5] - 0.2, 0.6))
-        f = clip.get(max(0.0, t - S[4]), sequential=SEQUENTIAL)
-        if f is not None and a > 0:
-            layer = f.convert("RGBA")
-            layer.putalpha(int(255 * a))
-            img.alpha_composite(layer)
-            gradient(img, top=True, strength=int(190 * a))
-            gradient(img, top=False, strength=int(120 * a))
-        text_block(img, ["In the play yard,", "he’s a different dog."], 170, "display", 96, light, fade(t, S[4] + 0.6) * (1 - fade(t, S[5] - 0.2, 0.6)), max_w=1000)
-        text_block(img, ["AI-generated illustration from his photo"], 1800, "body", 34, light, 0.85 * a)
-
-    # Scene 6: good to know.
-    if S[5] - 0.2 < t < S[6] + 0.4:
-        out = 1 - fade(t, S[6] - 0.3, 0.6)
-        text_block(img, ["One-on-one,", "he leans on you."], 230, "display", 96, C["ink"], fade(t, S[5] + 0.3) * out, max_w=1000)
-        items = ["House trained", "Ignored the office cat", "Some dogs OK, slow intros", "Neutered and vaccinated"]
-        y = 640
-        for i, item in enumerate(items):
-            a = fade(t, S[5] + 1.0 + i * 0.5) * out
-            if a > 0:
-                d = ImageDraw.Draw(img)
-                r = 18
-                cx = 140
-                d.ellipse((cx - r, y + 37 - r, cx + r, y + 37 + r), fill=C["accent"] + (int(255 * a),))
-            text_block(img, [item], y, "body", 56, C["ink"], a, max_w=740, align="left")
-            y += 130
-        paste_center(img, clean, W / 2, 1490, 0.95, alpha=fade(t, S[5] + 2.6) * out)
-
-    # Scene 7: call to action.
-    if t > S[6] - 0.2:
-        a = fade(t, S[6] + 0.2)
-        text_block(img, ["Meet Biscuit", "in the play yard."], 300, "display", 104, C["on_accent"], a)
-        paste_center(img, clean, W / 2, 960, 1.0, alpha=fade(t, S[6] + 0.6))
-        text_block(img, ["(555) 010-2200"], 1360, "display", 96, C["highlight"], fade(t, S[6] + 1.2))
-        text_block(img, ["Second Chance Rescue · Whitcomb", "Adoption fee $150"], 1490, "body", 52, C["on_accent"], fade(t, S[6] + 1.6))
-        text_block(img, ["Photo edited with AI to remove kennel bars", "Training exercise · fictional shelter"], 1760, "body", 30, C["on_accent"], fade(t, S[6] + 2.0) * 0.8)
+    if t >= END:
+        text_block(img, ["Meet Biscuit."], 500, "display", 120, on, fade(t, END + 0.2, 0.5))
+        text_block(img, ["Adoption fee $150"], 670, "body", 52, on, fade(t, END + 0.5, 0.5))
+        text_block(img, ["(555) 010-2200"], 900, "display", 96, C["highlight"], fade(t, 26.6, 0.4))
+        text_block(img, ["adopt@secondchancerescue.example.org"], 1030, "body", 40, on, fade(t, 26.8, 0.4), max_w=1000)
+        text_block(img, ["Yard photo and video made with AI from his kennel photo", "Training exercise · fictional shelter"],
+                   1784, "body", 30, on, fade(t, 26.6, 0.3), max_w=1000)
+        if HAS_CARTOON:
+            enter = (t - END) / 1.2
+            if enter < 1:  # walks in from the right edge, facing left
+                step = (t - END) / 0.18
+                cx = W + 220 - ease(enter) * (W / 2 + 220)
+                put_cartoon(img, ("walk-a", "walk-b")[int(step) % 2], 450, cx,
+                            1750 - 8 * math.sin(math.pi * (step % 1)), flip=True)
+            else:
+                waving = 26.6 <= t < 28.6 and int((t - 26.6) / 0.35) % 2 == 0
+                put_cartoon(img, "wave" if waving else "sit", 460, W / 2, 1750)
     return img.convert("RGB")
 
 
 def main():
     global SEQUENTIAL
-    n = int(DURATION * FPS)
+    n = int(round(DURATION * FPS))
     silent = str(Path(OUT).with_suffix(".silent.mp4"))
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
            "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "slow", "-crf", "23",
@@ -251,9 +319,10 @@ def main():
         p.stdin.write(frame(i / FPS).tobytes())
     p.stdin.close()
     p.wait()
-    # Yard ambience from the clip, only during the yard scene; silence elsewhere.
-    ms = int(S[4] * 1000)
-    af = (f"[1:a]atrim=0:{CLIP_LEN},afade=t=in:d=0.5,afade=t=out:st={CLIP_LEN - 0.8}:d=0.8,"
+    # Yard ambience from the clip (its seconds 1-10), only under the yard scene; silence elsewhere.
+    seg = CLIP_LEN - CLIP_IN
+    ms = int(YARD * 1000)
+    af = (f"[1:a]atrim={CLIP_IN}:{CLIP_LEN},asetpts=PTS-STARTPTS,afade=t=in:d=0.4,afade=t=out:st={seg - 0.6}:d=0.6,"
           f"adelay={ms}|{ms},apad=whole_dur={DURATION}[a]")
     r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", silent, "-i", str(CLIP), "-filter_complex", af,
                         "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
@@ -262,7 +331,7 @@ def main():
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", silent, "-c", "copy", "-movflags", "+faststart", OUT], check=True)
     Path(silent).unlink()
     SEQUENTIAL = False  # poster is a random-access frame
-    frame(S[6] + 3).save(Path(OUT).with_name("poster.jpg"), quality=88)
+    frame(28.8).save(Path(OUT).with_name("poster.jpg"), quality=88)
 
 
 if __name__ == "__main__":

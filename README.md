@@ -6,8 +6,15 @@ QR code on his printed adoption flyer opens this page.
 This is a class exercise for MDC Basecamp 2026. Second Chance Rescue, Biscuit,
 the phone number and the email address are made up.
 
+Dog photo: MDC Basecamp 2026 course materials.
+
 - `index.html`: the page (GitHub Pages, served from `main`).
-- `biscuit-story.mp4` and `poster.jpg`: the video and its poster frame.
+- `biscuit-story.mp4` and `poster.jpg`: the 30-second video and its poster frame.
+- `assets/`: the video's sources (photos, clip, staff note, fonts, palette).
+- `assets/cartoon/`: transparent PNG poses of the cartoon Biscuit
+  (`walk-a.png`, `walk-b.png`, `sit.png`, `wave.png`). He walks along the bottom of
+  the photo scene and sits and waves on the end card. The video renders without
+  him if any pose is missing.
 - `src/render_video.py`: renders the video with Pillow and ffmpeg.
 
 ## Rebuild the video
@@ -17,9 +24,10 @@ python3 -m venv .venv && .venv/bin/pip install pillow
 .venv/bin/python src/render_video.py <assets_dir> biscuit-story.mp4
 ```
 
-`<assets_dir>` holds `biscuit.jpg` (original kennel photo), `biscuit-clean.jpg`
-(bars removed with Gemini), `yard-clip.mp4` (Veo image-to-video of the clean
-photo), `note.png`, `tokens.json` and a `fonts/` folder. Needs ffmpeg.
+`<assets_dir>` (normally `assets`) holds `biscuit.jpg` (original kennel photo),
+`biscuit-clean.jpg` (bars removed with Gemini), `yard-clip.mp4` (Veo
+image-to-video of the clean photo), `note.png`, `cartoon/`, `tokens.json` and a
+`fonts/` folder. Needs ffmpeg. Add seconds after the output path to render
+preview stills instead, e.g. `render_video.py assets /tmp/out.mp4 3.3 13.5`.
 
-The edited photo and the yard clip are AI-generated; the video and the page
-label them that way.
+The edited photo and the yard clip are AI-generated; the video's end card, the page and the flyer say so.
