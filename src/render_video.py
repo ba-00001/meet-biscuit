@@ -292,7 +292,7 @@ def frame(t):
         text_block(img, ["Adoption fee $150"], 670, "body", 52, on, fade(t, END + 0.5, 0.5))
         text_block(img, ["(555) 010-2200"], 900, "display", 96, C["highlight"], fade(t, 26.6, 0.4))
         text_block(img, ["adopt@secondchancerescue.example.org"], 1030, "body", 40, on, fade(t, 26.8, 0.4), max_w=1000)
-        text_block(img, ["Yard photo and video made with AI from his kennel photo", "Training exercise · fictional shelter"],
+        text_block(img, ["Yard scenes created from his kennel photo", "Training exercise · fictional shelter"],
                    1784, "body", 30, on, fade(t, 26.6, 0.3), max_w=1000)
         if HAS_CARTOON:
             enter = (t - END) / 1.2

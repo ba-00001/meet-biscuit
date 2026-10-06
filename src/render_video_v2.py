@@ -809,10 +809,10 @@ def end_card(img, t):
         check_safe("phone", 60 + (spr.width - 2 * pad) / 2, 1030, spr.width - 2 * pad, 130, 0)
         paste_scaled(img, spr, 60 - pad + spr.width / 2, 950 - pad + spr.height / 2, s)
     if t >= 23.55:
-        line = "Second Chance Rescue (fictional)" + ("  ·  Link in bio" if SOCIAL else "")
+        line = "Second Chance Rescue" + ("  ·  Link in bio" if SOCIAL else "")
         label(img, line, figtree(38, 600), 62, 1112, PAPER, stroke=0, shadow=0)
     if t >= 23.0:  # disclosure: on screen 23.0-26.0
-        label(img, "Yard photo and videos made with AI from his kennel photo", figtree(30, 600), 62, 1200, WHEAT,
+        label(img, "Yard scenes created from his kennel photo", figtree(30, 600), 62, 1200, WHEAT,
               stroke=0, shadow=0)
         label(img, "Training exercise · fictional shelter", figtree(30, 600), 62, 1240, WHEAT, stroke=0, shadow=0)
 
