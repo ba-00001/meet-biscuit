@@ -31,3 +31,15 @@ image-to-video of the clean photo), `note.png`, `cartoon/`, `tokens.json` and a
 preview stills instead, e.g. `render_video.py assets /tmp/out.mp4 3.3 13.5`.
 
 The edited photo and the yard clip are AI-generated; the video's end card, the page and the flyer say so.
+
+## Animated flyer
+
+`animated-flyer.mp4` is a 10-second loop of flyer page 1. The Veo yard clip plays in the
+photo frame, and the cartoon Biscuit trots across the green band.
+`animated-flyer.gif` and `biscuit-story-preview.gif` are small previews for READMEs.
+
+```bash
+.venv/bin/python src/render_animated_flyer.py <flyer_page1.png> assets animated-flyer.mp4
+```
+
+`assets/flyer-page1.png` is the page-1 render this command uses.
