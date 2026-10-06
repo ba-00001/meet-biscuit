@@ -270,8 +270,8 @@
   }
   @media (min-width: 1080px) {
     .grid { grid-template-columns: repeat(12, 1fr); }
-    .c-promo { grid-column: 1 / 5; grid-row: 1 / 3; }
-    .c-anim { grid-column: 5 / 10; grid-row: 1 / 3; }
+    .c-anim { grid-column: 1 / 6; grid-row: 1 / 3; }
+    .c-promo { grid-column: 6 / 10; grid-row: 1 / 3; }
     .c-pdf { grid-column: 10 / 13; }
     .c-qr { grid-column: 10 / 13; }
     .c-site { grid-column: 1 / -1; }
@@ -573,29 +573,29 @@
     </div>
 
     <div class="grid">
-      <a class="card c-promo" href="../biscuit-story-v2.mp4" data-tilt data-reveal>
+      <a class="card c-anim" href="../animated-flyer.mp4" data-tilt data-reveal>
+        <div class="media">
+          <video data-preview src="../animated-flyer.mp4" poster="img/flyer-thumb.jpg" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
+        </div>
+        <div class="card-body">
+          <span class="tag label"><span class="rec" aria-hidden="true"></span>01 · Animated flyer</span>
+          <h3>Animated flyer</h3>
+          <p>The flyer, but it moves. Yard clip in the photo frame, cartoon Biscuit trotting across. 10-second loop.</p>
+          <span class="go">Open the loop <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </div>
+      </a>
+
+      <a class="card c-promo" href="../biscuit-story-v2.mp4" data-tilt data-reveal style="--rd:80ms">
         <div class="media">
           <img src="img/poster-thumb.jpg" width="540" height="960" alt="Still from the promo video: Biscuit standing in the grass under a lime caption that says Yard guy." loading="lazy">
           <span class="play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4v16l14-8z" fill="#1F1A16"/></svg></span>
           <span class="len" aria-hidden="true">0:26</span>
         </div>
         <div class="card-body">
-          <span class="tag label">01 · Promo video</span>
+          <span class="tag label">02 · Promo video</span>
           <h3>Watch the promo video <small>(26 s)</small></h3>
           <p>Kennel him vs. yard him. 26 seconds, vertical, every cut on the beat. Sound on.</p>
           <span class="go">Play it <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        </div>
-      </a>
-
-      <a class="card c-anim" href="../animated-flyer.mp4" data-tilt data-reveal style="--rd:80ms">
-        <div class="media">
-          <video data-preview src="../animated-flyer.mp4" poster="img/flyer-thumb.jpg" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
-        </div>
-        <div class="card-body">
-          <span class="tag label"><span class="rec" aria-hidden="true"></span>02 · Animated flyer</span>
-          <h3>Animated flyer</h3>
-          <p>The flyer, but it moves. Yard clip in the photo frame, cartoon Biscuit trotting across. 10-second loop.</p>
-          <span class="go">Open the loop <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </div>
       </a>
 
