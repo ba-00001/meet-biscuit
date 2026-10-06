@@ -1,0 +1,5 @@
+projectguidefordev/
+sync-projectguidefordev.sh
+._*
+.DS_Store
+src/frames/
