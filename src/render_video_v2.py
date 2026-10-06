@@ -710,8 +710,9 @@ CAPS = [
     Cap(21.0, 22.5, ["Come meet the", "real him."], "hl", 100, y=300, anim="words"),
 ]
 
-STATS = [("CLASS", "Shepherd mix, male, about 3"), ("BUILD", "Large, tan and black"),
-         ("SPECIAL MOVE", "The lean (one-on-one)"), ("BUFFS", "Neutered, vaccinated, heartworm negative"),
+STATS = [("BREED", "Shepherd mix, male, about 3"), ("SIZE", "Large, tan and black"),
+         ("PERSONALITY", "Velcro dog: stays close and leans on you"),
+         ("HEALTH", "Neutered, vaccinated, heartworm negative"),
          ("ALSO", "House trained"), ("HEADS UP", "Shy at the kennel front.")]
 CARD_X, CARD_Y, CARD_W = 60, 400, 840
 VAL_X = 340
