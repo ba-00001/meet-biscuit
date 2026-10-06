@@ -87,7 +87,6 @@
     <a class="call" href="tel:+15550102200">Call to meet him: (555) 010-2200</a>
     <a class="mail" id="mail" href="mailto:adopt@secondchancerescue.example.org?subject=Meeting%20Biscuit%20(web)">Email the adoption team</a>
   </div>
-  <p class="code" id="code" hidden></p>
 
   <ul>
     <li>Male shepherd mix, about 3, large</li>
@@ -105,14 +104,11 @@
   <p class="note">Class exercise for MDC Basecamp 2026. Second Chance Rescue, Biscuit's story, the address, phone and email are made up; this page is not connected to any real shelter of that name. The yard photo and play-yard scenes were created from his kennel photo. Dog photo: MDC Basecamp 2026 course materials. Not an official MDC or CodePath page.</p>
 </main>
 <script>
-  // Tag emails and calls with where the visitor came from (?src=flyer on the flyer QR code).
+  // Tag emails with where the visitor came from (?src=flyer on the flyer QR code).
   var src = (new URLSearchParams(location.search).get("src") || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 20);
   if (src) {
     var mail = document.getElementById("mail");
     mail.href = mail.href.replace("(web)", "(" + src + ")");
-    var code = document.getElementById("code");
-    code.textContent = "Calling? Mention code " + src.toUpperCase() + ".";
-    code.hidden = false;
   }
 </script>
 </body>
