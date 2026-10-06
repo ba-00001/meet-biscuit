@@ -39,7 +39,11 @@ photo frame, and the cartoon Biscuit trots across the green band.
 `animated-flyer.gif` and `biscuit-story-preview.gif` are small previews for READMEs.
 
 ```bash
-.venv/bin/python src/render_animated_flyer.py <flyer_page1.png> assets animated-flyer.mp4
+.venv/bin/python src/render_animated_flyer.py <page1.png> <anim.json> assets animated-flyer.mp4 [page1-mask.png]
 ```
 
-`assets/flyer-page1.png` is the page-1 render this command uses.
+- `anim.json` gives the tilted photo box and an empty strip for the walking cartoon.
+- The optional mask is the same render with the photo filled `#FF00FF`, so stickers on
+  the photo stay on top of the clip.
+- `assets/flyer-page1.png` is the current (Gen Z) page-1 render.
+- `*-classic.*` files are the first flyer design, kept for comparison.
