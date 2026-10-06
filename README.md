@@ -47,3 +47,12 @@ photo frame, and the cartoon Biscuit trots across the green band.
   the photo stay on top of the clip.
 - `assets/flyer-page1.png` is the current (Gen Z) page-1 render.
 - `*-classic.*` files are the first flyer design, kept for comparison.
+
+## Video v2 ("Kennel Him vs Yard Him")
+
+`biscuit-story-v2.mp4` is the main video. It runs 26 s at 120 BPM, with every cut on a
+beat. `src/render_video_v2.py` renders it, and `src/beat_v2.py` makes the beat and sound
+effects, which are all synthesized (no licensed music). The yard shots use
+`assets/v2/V1..V4.mp4` when present; otherwise they use stand-ins cut from
+`assets/yard-clip.mp4`. Captions use Bricolage Grotesque (OFL, `assets/fonts/`).
+`biscuit-story.mp4` is the first version (v1).
