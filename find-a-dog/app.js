@@ -258,10 +258,10 @@ function toggle(id,btn){
   sync();
 }
 var ROWS=[
- ['Cats',function(x){var g=gw(x,'cats');return g==='unknown'?null:g==='yes'?'Yes':'No'}],
- ['Other dogs',function(x){var g=gw(x,'dogs');return g==='unknown'?null:g==='yes'?'Yes':'No'}],
- ['Kids',function(x){var g=gw(x,'kids');return g==='unknown'?null:g==='yes'?'Yes':'No'}],
- ['House trained',function(x){return x.house_trained===true?'Yes':x.house_trained===false?'Not yet':null}],
+ ['Cats',function(x){var g=gw(x,'cats');return g==='unknown'?null:g==='yes'?'Yes':'No'},'cats'],
+ ['Other dogs',function(x){var g=gw(x,'dogs');return g==='unknown'?null:g==='yes'?'Yes':'No'},'dogs'],
+ ['Kids',function(x){var g=gw(x,'kids');return g==='unknown'?null:g==='yes'?'Yes':'No'},'kids'],
+ ['House trained',function(x){return x.house_trained===true?'Yes':x.house_trained===false?'Not yet':null},'house_training'],
  ['Age',function(x){return ageText(x)}],['Size',function(x){return SIZE[x.size]||null}],
  ['Sex',function(x){return x.sex==='M'?'Male':x.sex==='F'?'Female':null}],['Breed',function(x){return x.breed}],
  ['Color',function(x){return x.color}],['Fee',function(x){return feeText(x.fee)}],
@@ -279,7 +279,7 @@ function renderCmp(){
     var nm=el('div','cmp-name'),h=el('h3');h.appendChild(link(dog.url,dog.name));nm.appendChild(h);nm.appendChild(el('p',null,'ID '+id));col.appendChild(nm);
     var dl=el('dl');
     ROWS.forEach(function(r){var w=el('div'),dd=el('dd'),v=r[1](dog);w.appendChild(el('dt',null,r[0]));
-      if(v==null||v==='')dd.appendChild(el('span','unk','Unknown — ask'));else if(v==='Yes'||v==='No'||v==='Not yet')dd.appendChild(el('span','yn '+(v==='Yes'?'yes':'no'),v));else dd.textContent=v;w.appendChild(dd);dl.appendChild(w)});
+      if(v==null||v===''){dd.appendChild(el('span','unk','Unknown — ask'));var nt=r[2]?(dog.facts||[]).filter(function(f){return f.topic===r[2]}).map(function(f){return f.text}):[];if(nt.length)dd.appendChild(el('span','unk-note','Notes: '+nt.join(' · ')))}else if(v==='Yes'||v==='No'||v==='Not yet')dd.appendChild(el('span','yn '+(v==='Yes'?'yes':'no'),v));else dd.textContent=v;w.appendChild(dd);dl.appendChild(w)});
     col.appendChild(dl);
     var act=el('div','cmp-act'),a=el('button','tool tool-ask');a.type='button';a.setAttribute('aria-haspopup','dialog');
     a.innerHTML='<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 4.5h14v9H8.5L5 16.5v-3H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';

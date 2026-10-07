@@ -351,7 +351,8 @@ dialog.cmp[open]{display:flex;flex-direction:column;animation:rise 280ms var(--o
 .cmp-col dd{margin:2px 0 0;font:600 15px/1.38 var(--sans)}
 .cmp-col dd .yn{display:inline-block;padding:3px 10px;border:2px solid var(--ink);border-radius:999px;font:800 12px/1.1 var(--display)}
 .cmp-col dd .yes{background:var(--lime)}.cmp-col dd .no{background:var(--pink)}
-.cmp-col dd .unk{display:inline-block;padding:3px 8px;border:2px dashed var(--ink);border-radius:999px;font:800 12px/1.1 var(--display)}
+.cmp-col dd .unk-note{display:block;margin-top:4px;font-size:13px;line-height:1.35;color:var(--ink-2,#4A423A)}
+.unk{display:inline-block;padding:3px 8px;border:2px dashed var(--ink);border-radius:999px;font:800 12px/1.1 var(--display)}
 .cmp-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:12px;border-top:1.5px dashed var(--rule)}
 .cmp-act .tool{flex:1 1 auto}
 .cmp-act a{font:700 14px/1 var(--sans);padding:12px 2px}
