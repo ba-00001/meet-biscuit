@@ -39,16 +39,23 @@ if('IntersectionObserver' in window){
   [].forEach.call(d.querySelectorAll('main .art'),function(a){io.observe(a)});
 }
 var seq=0;
-function ava(id){
-  var box=el('span','ava'),src=d.querySelector('main [data-art="'+id+'"]');box.setAttribute('aria-hidden','true');
-  if(!src)return box;
-  var img=src.querySelector('img');
-  if(img){var i=d.createElement('img');i.src=img.getAttribute('src');i.alt='';box.appendChild(i);return box}
-  var c=src.cloneNode(true),n='-q'+(++seq);c.removeAttribute('data-art');c.classList.add('awake');
+/* a cartoon copy with its SVG ids made unique, so clip paths still resolve */
+function cloneArt(node){
+  var c=node.cloneNode(true),n='-q'+(++seq);c.removeAttribute('data-art');c.classList.add('awake');
   [].forEach.call(c.querySelectorAll('[id]'),function(x){x.id+=n});
   [].forEach.call(c.querySelectorAll('[clip-path]'),function(x){x.setAttribute('clip-path',x.getAttribute('clip-path').replace(')',n+')'))});
   [].forEach.call(c.querySelectorAll('use'),function(x){x.setAttribute('href',x.getAttribute('href')+n)});
-  box.appendChild(c);return box;
+  return c;
+}
+/* the dog's photo (or cartoon) for chat, match, tray and compare; twin=true
+   keeps the sticker twin on the photo (compare is big enough for it) */
+function ava(id,twin){
+  var box=el('span','ava'),src=d.querySelector('main [data-art="'+id+'"]');box.setAttribute('aria-hidden','true');
+  if(!src)return box;
+  var img=src.querySelector('img');
+  if(img){var i=d.createElement('img');i.src=img.getAttribute('src');i.alt='';box.appendChild(i);
+    var tw=twin&&src.querySelector('.twin');if(tw)box.appendChild(cloneArt(tw));return box}
+  box.appendChild(cloneArt(src));return box;
 }
 
 /* ---------- dialogs: open from a control, give focus back to it on close ---------- */
@@ -300,7 +307,7 @@ function renderCmp(){
   d.getElementById('cmp-hint').classList.toggle('off',picked.length<2);
   picked.forEach(function(id){
     var dog=DOGS[id],col=el('section','cmp-col');col.setAttribute('aria-label',dog.name+', ID '+id);
-    var media=el('div','cmp-media');media.appendChild(ava(id));col.appendChild(media);
+    var media=el('div','cmp-media');media.appendChild(ava(id,true));col.appendChild(media);
     var nm=el('div','cmp-name'),h=el('h3');h.appendChild(link(dog.url,dog.name));nm.appendChild(h);nm.appendChild(el('p',null,'ID '+id));col.appendChild(nm);
     var dl=el('dl');
     ROWS.forEach(function(r){var w=el('div'),dd=el('dd'),v=r[1](dog);w.appendChild(el('dt',null,r[0]));
