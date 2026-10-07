@@ -8,7 +8,10 @@ LIST.forEach(function(x){DOGS[x.id]=x});
 var B=d.body.dataset,TEL=B.tel,PHONE=B.phone,EMAIL=B.email,HOURS=B.hours;
 var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 var coarse=window.matchMedia&&matchMedia('(pointer: coarse)').matches;
-var UNKNOWN='Unknown — the records don’t say. Ask staff.';
+var UNKNOWN='I don’t know yet — the records don’t say. Want the team to set up a meet?';
+/* facts in plain words: drop trailing staff initials and backend-only lines (old runs, crossed-out cards) */
+var INIT_RE=/\s*(?:[-\u2013\u2014]+\s*|\(\s*)[A-Z]{2,3}\.?\s*\)?\s*$/,BACK_RE=/crossed out|\bprevious run\b|\bwas in run\b|\brun [A-Z]-?\d+\b|\bkennel card shows\b/i;
+LIST.forEach(function(x){x.facts=(x.facts||[]).filter(function(f){return f&&f.text&&!BACK_RE.test(f.text)}).map(function(f){return {topic:f.topic,text:String(f.text).replace(INIT_RE,''),sources:f.sources||[]}})});
 var SIZE={S:'Small',M:'Medium',L:'Large',XL:'Extra large'},BAND={puppy:'Puppy',young:'Young',adult:'Adult',senior:'Senior'};
 var GWL={cats:'Cats',dogs:'Other dogs',kids:'Kids'};
 
@@ -16,7 +19,11 @@ function el(tag,cls,text){var x=d.createElement(tag);if(cls)x.className=cls;if(t
 function link(href,text,cls){var a=el('a',cls,text);a.href=href;return a}
 function mail(subject){return 'mailto:'+EMAIL+'?subject='+encodeURIComponent(subject)}
 function labels(sources){var seen={},out=[];(sources||[]).forEach(function(s){var l=s&&s.label;if(l&&!seen[l]){seen[l]=1;out.push(l)}});return out.join(' · ')}
-function srcLine(cls,sources){var p=el('p',cls);p.appendChild(el('b',null,'From: '));p.appendChild(d.createTextNode(labels(sources)||'no source on file'));return p}
+var DATE_RE=/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}, \d{4}\b|\bon (\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/;
+/* the date a fact's own text carries (not the "as of" date, which is just the records' date) */
+function factDate(text){var t=String(text||'').replace(/\(as of [^)]*\)/g,'').replace(/as of [A-Z][a-z]{2} \d{1,2}, \d{4}/g,''),m=t.match(DATE_RE);return m?(m[1]||m[0]):null}
+function srcLine(cls,sources,text){var p=el('p',cls);p.appendChild(el('b',null,'From: '));p.appendChild(d.createTextNode(labels(sources)||'no source on file'));
+  var dt=text&&factDate(text);if(dt){p.appendChild(d.createTextNode(' · '));p.appendChild(el('span','src-date',dt))}return p}
 function gw(dog,k){var g=(dog.good_with||{})[k]||{};return g.value===true?'yes':g.value===false?'no':'unknown'}
 function factsOf(dog,topics){return (dog.facts||[]).filter(function(f){return topics.indexOf(f.topic)>=0&&f.sources&&f.sources.length})}
 function sinceDate(days){if(days==null||!IDX.reference_date)return null;var p=IDX.reference_date.split('-');return new Date(Date.UTC(+p[0],p[1]-1,+p[2])-days*864e5)}
@@ -95,7 +102,7 @@ var T=[
 ['since','Time here',/\b(how long|since|been here|arrive\w*|waiting|days)\b/,['here_since','intake'],[]],
 ['history','Background',/\b(found|stray|history|background|owners?|came in|intake|where (are you|did you come) from|story|transfer\w*|rescued)\b/,['intake'],[]],
 ['interest','Interest',/\b(interest|interested|popular|anyone else|other people|applications?|applied|asked about)\b/,['interest'],[]],
-['meet','How to meet',/\b(meet|visit|adopt|adopting|adoption|apply|appointment|come see|contact|phone|email|next steps?|available|kennel|where are you|how do i)\b/,['meet','location'],[]],
+['meet','How to meet',/\b(meet|visit|adopt|adopting|adoption|apply|appointment|come see|contact|phone|email|next steps?|available|kennel|where are you|how do i)\b/,['meet'],[]],
 ['grooming','Grooming',/\b(groom\w*|shed|sheds|shedding|brush\w*|hypoallergenic|haircuts?|bath\w*)\b/,[],['breed','color']],
 ['alone','Home alone',/\b(alone|separation|work all day|left home|hours)\b/,[],['crate']],
 ['pets','Other pets',/\b(rabbits?|bunn(y|ies)|birds?|hamsters?|guinea pigs?|other pets|pets|horses?|livestock|ferrets?|chickens? (coop|yard))\b/,[],['cats','dogs']],
@@ -140,9 +147,6 @@ function resolve(dog,t){
   topicFacts(dog,spec[4]).forEach(function(f){if(!seen[f.text]){seen[f.text]=1;rel.push(f)}});
   return{t:t,unknown:true,facts:rel};
 }
-var body=d.getElementById('chat-body'),form=d.getElementById('chat-form'),input=d.getElementById('chat-q');
-var nameEl=d.getElementById('chat-name'),avaEl=d.getElementById('chat-ava'),title=d.getElementById('chat-title');
-var logs={},cur=null;
 function botGroup(id){var g=el('div','grp');g.appendChild(ava(id));return g}
 function greet(id,log){
   var dog=DOGS[id],g=botGroup(id),m=el('div','msg');
@@ -152,8 +156,9 @@ function greet(id,log){
 }
 function ctaAsk(dog,id){
   var c=el('p','msg-cta');
-  c.appendChild(d.createTextNode('Call '));c.appendChild(link('tel:'+TEL,PHONE));
-  c.appendChild(d.createTextNode(' or '));c.appendChild(link(mail('Question about '+dog.name+' ('+id+')'),'email us'));
+  c.appendChild(link(mail('Meeting '+dog.name+' ('+id+')'),'Set up a meet','mbtn'));
+  c.appendChild(d.createTextNode(' or call '));c.appendChild(link('tel:'+TEL,PHONE));
+  c.appendChild(d.createTextNode(' · '));c.appendChild(link(mail('Question about '+dog.name+' ('+id+')'),'email us'));
   return c;
 }
 function bubble(id,r){
@@ -161,10 +166,10 @@ function bubble(id,r){
   m.appendChild(el('p','msg-topic',TOPIC[r.t][1]));
   if(r.unknown&&r.t!=='meet'){
     m.classList.add('warn');
-    m.appendChild(el('p','msg-a msg-unk',UNKNOWN));
+    var u=el('p','msg-a msg-unk');u.appendChild(el('span','unk-pill','Unknown'));u.appendChild(d.createTextNode(UNKNOWN));m.appendChild(u);
     if(r.facts.length)m.appendChild(el('p','msg-rel','What the records do say:'));
   }
-  r.facts.forEach(function(f){m.appendChild(el('p','msg-a',f.text));m.appendChild(srcLine('msg-src',f.sources))});
+  r.facts.forEach(function(f){m.appendChild(el('p','msg-a',f.text));m.appendChild(srcLine('msg-src',f.sources,f.text))});
   if(r.t==='meet'){
     if(!r.facts.length){m.appendChild(el('p','msg-a','Come say hi: we’re open '+HOURS+'.'));var s=el('p','msg-src');s.appendChild(el('b',null,'From: '));s.appendChild(d.createTextNode('shelter contact info'));m.appendChild(s)}
     var c=el('p','msg-cta');
@@ -190,36 +195,56 @@ function reply(id,q){
   }
   return ts.map(function(t){return bubble(id,resolve(DOGS[id],t))});
 }
-function scrollToNode(node){body.scrollTop=Math.max(0,node.offsetTop-body.offsetTop-8)}
-function ask(q){
-  q=String(q||'').trim().slice(0,200);if(!q||!cur)return;
-  var id=cur,log=logs[id],me=el('p','msg me',q);
-  log.appendChild(me);
-  var g=botGroup(id),typing=el('div','msg typing');typing.setAttribute('aria-hidden','true');
-  typing.appendChild(el('i'));typing.appendChild(el('i'));typing.appendChild(el('i'));
-  g.appendChild(typing);log.appendChild(g);scrollToNode(me);
-  var parts=reply(id,q);
-  setTimeout(function(){
-    typing.remove();
-    parts.forEach(function(p,i){if(!reduce)p.style.animationDelay=(i*90)+'ms';g.appendChild(p)});
-    scrollToNode(me);
-  },reduce?0:380);
+/* one conversation view: the drawer on the index, or the inline panel on a dog page.
+   box holds .chat-body, .chat-form (with its input) and the .qchip buttons. */
+function ChatView(box){
+  var v={body:box.querySelector('.chat-body'),form:box.querySelector('.chat-form'),logs:{},cur:null};
+  v.input=v.form.querySelector('input');
+  v.show=function(id){
+    v.cur=id;
+    for(var k in v.logs)v.logs[k].hidden=k!==id;
+    if(!v.logs[id]){var log=el('div','log');log.setAttribute('role','log');log.setAttribute('aria-live','polite');log.setAttribute('aria-label','Conversation with '+DOGS[id].name);v.logs[id]=log;v.body.appendChild(log);greet(id,log)}
+  };
+  function scrollToNode(node){var b=v.body;b.scrollTop=Math.max(0,b.scrollTop+node.getBoundingClientRect().top-b.getBoundingClientRect().top-8)}
+  v.ask=function(q){
+    q=String(q||'').trim().slice(0,200);if(!q||!v.cur)return;
+    var id=v.cur,log=v.logs[id],me=el('p','msg me',q);
+    log.appendChild(me);
+    var g=botGroup(id),typing=el('div','msg typing');typing.setAttribute('aria-hidden','true');
+    typing.appendChild(el('i'));typing.appendChild(el('i'));typing.appendChild(el('i'));
+    g.appendChild(typing);log.appendChild(g);scrollToNode(me);
+    var parts=reply(id,q);
+    setTimeout(function(){
+      typing.remove();
+      parts.forEach(function(p,i){if(!reduce)p.style.animationDelay=(i*90)+'ms';g.appendChild(p)});
+      scrollToNode(me);
+    },reduce?0:380);
+  };
+  v.form.addEventListener('submit',function(ev){ev.preventDefault();v.ask(v.input.value);v.input.value=''});
+  [].forEach.call(box.querySelectorAll('.qchip'),function(b){b.addEventListener('click',function(){v.ask(b.textContent)})});
+  return v;
 }
+var dlgChat=CHAT_OK?ChatView(chat):null;
+var nameEl=d.getElementById('chat-name'),avaEl=d.getElementById('chat-ava'),title=d.getElementById('chat-title');
 function openChat(id,from){
-  if(!CHAT_OK||!DOGS[id])return;
-  cur=id;
+  if(!dlgChat||!DOGS[id])return;
   nameEl.textContent=DOGS[id].name;
   avaEl.textContent='';avaEl.appendChild(ava(id));
-  for(var k in logs)logs[k].hidden=k!==id;
-  if(!logs[id]){var log=el('div','log');log.setAttribute('role','log');log.setAttribute('aria-live','polite');log.setAttribute('aria-label','Conversation with '+DOGS[id].name);logs[id]=log;body.appendChild(log);greet(id,log)}
-  input.value='';
-  openDialog(chat,from,coarse?title:input);
-  body.scrollTop=body.scrollHeight;
+  dlgChat.show(id);dlgChat.input.value='';
+  openDialog(chat,from,coarse?title:dlgChat.input);
+  dlgChat.body.scrollTop=dlgChat.body.scrollHeight;
 }
-if(CHAT_OK){
-  form.addEventListener('submit',function(ev){ev.preventDefault();ask(input.value);input.value=''});
-  [].forEach.call(chat.querySelectorAll('.qchip'),function(b){b.addEventListener('click',function(){ask(b.textContent)})});
-  d.getElementById('chat-close').addEventListener('click',function(){chat.close()});
+if(CHAT_OK)d.getElementById('chat-close').addEventListener('click',function(){chat.close()});
+/* the inline "Ask {Name}" panel on a dog page */
+var askp=d.querySelector('.askp[data-dog]');
+if(askp&&DOGS[askp.getAttribute('data-dog')]){
+  var aid=askp.getAttribute('data-dog'),inl=ChatView(askp),aav=askp.querySelector('.askp-ava');
+  if(aav)aav.appendChild(ava(aid));
+  inl.show(aid);
+  [].forEach.call(d.querySelectorAll('[data-ask-jump]'),function(a){a.addEventListener('click',function(ev){
+    ev.preventDefault();askp.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+    var t=coarse?d.getElementById('ask-h'):inl.input;try{t.focus({preventScroll:true})}catch(e){t.focus()}
+  })});
 }
 
 /* ================= compare ================= */
@@ -367,8 +392,7 @@ if(grid){
 }
 
 /* ================= ranking (Find my match + guide shortlist) ================= */
-function rank(ans){
-  return LIST.map(function(x){
+function scoreDog(x,ans){
     var pts=[],score=0;
     function add(n,label,text,sources,kind){pts.push({n:n,label:label,text:text,sources:sources||[],kind:kind});score+=n}
     ['cats','dogs','kids'].forEach(function(k){
@@ -399,7 +423,35 @@ function rank(ans){
       else add(0,'House trained','Unknown — the records don’t say.',[],'ask');
     }
     return {dog:x,score:score,pts:pts};
-  }).sort(function(a,b){return b.score-a.score||(b.dog.days_on_site||0)-(a.dog.days_on_site||0)||a.dog.name.localeCompare(b.dog.name)||a.dog.id.localeCompare(b.dog.id)});
+}
+function rank(ans){
+  return LIST.map(function(x){return scoreDog(x,ans)}).sort(function(a,b){return b.score-a.score||(b.dog.days_on_site||0)-(a.dog.days_on_site||0)||a.dog.name.localeCompare(b.dog.name)||a.dog.id.localeCompare(b.dog.id)});
+}
+/* ================= remembered answers: this browser only, and the page works without them ================= */
+var FIT_KEY='scr-fit-v1';
+function loadFit(){
+  var raw=null,a=null;
+  try{raw=window.localStorage.getItem(FIT_KEY)}catch(e){return null}
+  if(!raw)return null;
+  try{a=JSON.parse(raw)}catch(e){return null}
+  if(!a||typeof a!=='object')return null;
+  a.sizes=Array.isArray(a.sizes)?a.sizes:[];a.ages=Array.isArray(a.ages)?a.ages:[];
+  return a;
+}
+function saveFit(a){
+  var prev=loadFit()||{},o={sizes:(a.sizes||[]).slice(0,4),ages:(a.ages||[]).slice(0,4)};
+  ['cats','dogs','kids','ht','home','alone','energy'].forEach(function(k){var v=a[k]!==undefined?a[k]:prev[k];if(typeof v==='string')o[k]=v});
+  try{window.localStorage.setItem(FIT_KEY,JSON.stringify(o))}catch(e){}
+}
+function forgetFit(){try{window.localStorage.removeItem(FIT_KEY)}catch(e){}}
+function ptItem(p){
+  var it=el('li');
+  it.appendChild(el('span','pt pt-'+p.kind,p.kind==='ask'?'0 · ask':(p.n>0?'+':'−')+Math.abs(p.n)));
+  it.appendChild(el('b',null,p.label));
+  it.appendChild(el('p',null,p.text));
+  if(p.sources.length)it.appendChild(srcLine('src',p.sources,p.text));
+  else if(p.kind==='ask'){var s=el('p','src');s.appendChild(el('b',null,'Ask: '));s.appendChild(link('tel:'+TEL,PHONE));it.appendChild(s)}
+  return it;
 }
 function resultCard(r){
   var x=r.dog,li=el('li','rcard');
@@ -416,15 +468,7 @@ function resultCard(r){
   li.appendChild(wrap);
   var ul=el('ul','pts');
   if(!r.pts.length){var e=el('li');e.appendChild(el('span','pt pt-ask','0'));e.appendChild(el('p',null,'Nothing to score yet: answer a question or two.'));ul.appendChild(e)}
-  r.pts.forEach(function(p){
-    var it=el('li');
-    it.appendChild(el('span','pt pt-'+p.kind,p.kind==='ask'?'0 · ask':(p.n>0?'+':'−')+Math.abs(p.n)));
-    it.appendChild(el('b',null,p.label));
-    it.appendChild(el('p',null,p.text));
-    if(p.sources.length)it.appendChild(srcLine('src',p.sources));
-    else if(p.kind==='ask'){var s=el('p','src');s.appendChild(el('b',null,'Ask: '));s.appendChild(link('tel:'+TEL,PHONE));it.appendChild(s)}
-    ul.appendChild(it);
-  });
+  r.pts.forEach(function(p){ul.appendChild(ptItem(p))});
   li.appendChild(ul);
   var tools=el('div','tools');
   var a=el('button','tool tool-ask');a.type='button';a.setAttribute('data-dog',x.id);a.setAttribute('aria-haspopup','dialog');a.appendChild(el('span',null,'Ask '+x.name));
@@ -447,6 +491,7 @@ if(match){
       sizes:checked(form,p+'-size').filter(Boolean),ages:checked(form,p+'-age').filter(Boolean),ht:checked(form,p+'-ht')[0]};
   }
   function runMatch(ans){
+    saveFit(ans);
     lastRank=rank(ans);showRank(lastRank,false);
     mform.hidden=true;results.hidden=false;mtitle.textContent='Your ranked dogs';
     var top=lastRank[0];
@@ -495,7 +540,7 @@ if(guide){
     if(a.energy)asks.push('Energy: it isn’t scored. Ask what each dog is like in the play yard.');
     if(!asks.length)asks.push('Anything marked “ask” on your shortlist.');
     asks.forEach(function(t){ga.appendChild(el('li',null,t))});
-    window.__guideRank=a;
+    window.__guideRank=a;saveFit(a);
   }
   gnext.addEventListener('click',function(){
     if(gi===steps.length-2){shortlist();show(gi+1);return}
@@ -521,5 +566,41 @@ if(guide){
     openDialog(dlg,b,dlg.querySelector('h2'));
   });
 });
+/* ================= "Fits your life" on a dog page ================= */
+var fitEl=d.getElementById('fit');
+function renderFit(){
+  if(!fitEl||!askp)return;
+  var id=askp.getAttribute('data-dog'),dog=DOGS[id],a=loadFit();if(!dog||!a)return;
+  var pts=scoreDog(dog,a).pts.slice();
+  if(a.home==='apt')pts.push({n:0,label:'Apartment',text:'No record says whether '+dog.name+' is OK in an apartment. Ask about barking and how '+dog.name+' settles indoors.',sources:[],kind:'ask'});
+  var nm=0,nk=0,nn=0;pts.forEach(function(p){if(p.kind==='pos')nm++;else if(p.kind==='ask')nk++;else nn++});
+  var orig=fitEl.innerHTML;
+  fitEl.textContent='';fitEl.classList.add('on');
+  fitEl.appendChild(el('p','eyebrow','From your answers on Find my match'));
+  var h=el('h2','fit-h');h.id='fit-h';h.tabIndex=-1;
+  h.appendChild(d.createTextNode('Fits your life: '));
+  h.appendChild(el('span','fit-score',nm+' of '+pts.length+' match'));
+  if(nk)h.appendChild(el('span','fit-more',' · '+nk+' to ask'));
+  if(nn)h.appendChild(el('span','fit-more',' · '+nn+' don’t'));
+  fitEl.appendChild(h);
+  if(!pts.length)fitEl.appendChild(el('p','fit-p','Your answers didn’t ask about cats, other dogs, kids, size, age or house training, so there’s nothing to check yet.'));
+  else{fitEl.appendChild(el('p','fit-meta','Checked against '+dog.name+'’s records. Every point shows where it comes from; “ask” means the records don’t say.'));
+    var ul=el('ul','pts');pts.forEach(function(p){ul.appendChild(ptItem(p))});fitEl.appendChild(ul)}
+  var acts=el('p','fit-acts');
+  acts.appendChild(link('../index.html#match','Change my answers'));
+  var fb=el('button','linkbtn','Forget my answers');fb.type='button';
+  fb.addEventListener('click',function(){forgetFit();fitEl.classList.remove('on');fitEl.innerHTML=orig;var t=d.getElementById('fit-h');if(t){t.tabIndex=-1;t.focus()}});
+  acts.appendChild(fb);fitEl.appendChild(acts);
+}
+renderFit();
+/* index: bring back saved answers, and open Find my match from a dog page's link (#match) */
+if(match){
+  (function(a){
+    if(!a)return;var m=d.getElementById('match-form');
+    ['cats','dogs','kids','ht'].forEach(function(k){if(a[k]!=='yes'&&a[k]!=='no')return;var i=m.querySelector('input[name="m-'+k+'"][value="'+a[k]+'"]');if(i)i.checked=true});
+    [].forEach.call(m.querySelectorAll('input[name="m-size"],input[name="m-age"]'),function(i){i.checked=a.sizes.indexOf(i.value)>=0||a.ages.indexOf(i.value)>=0});
+  })(loadFit());
+  if(location.hash==='#match'){var mb=d.querySelector('[data-open="match"]');if(mb)mb.click()}
+}
 sync();
 })();
