@@ -408,7 +408,12 @@ function resultCard(r){
   var sc=el('span','rscore'+(r.score>0?' pos':r.score<0?' neg':''),(r.score>0?'+':r.score<0?'−':'')+Math.abs(r.score)+' point'+(Math.abs(r.score)===1?'':'s'));
   top.appendChild(sc);
   var meta=el('p',null,[ageText(x),SIZE[x.size],x.breed].filter(Boolean).join(' · '));meta.style.margin='4px 0 0';meta.style.fontSize='14px';meta.style.color='var(--ink-2)';
-  var wrap=el('div');wrap.appendChild(top);wrap.appendChild(meta);li.appendChild(wrap);
+  var wrap=el('div');wrap.appendChild(top);wrap.appendChild(meta);
+  if(r.pts.length){var nm=r.pts.filter(function(p){return p.kind==='pos'}).length,nk=r.pts.filter(function(p){return p.kind==='ask'}).length,refs={};
+    r.pts.forEach(function(p){if(p.kind!=='ask')p.sources.forEach(function(s){if(s.label)refs[s.label]=1})});
+    var fit=el('p','rfit',nm+' of '+r.pts.length+' match'+(nk?' · '+nk+' to ask':'')+' · from '+Object.keys(refs).length+' record'+(Object.keys(refs).length===1?'':'s'));
+    wrap.appendChild(fit)}
+  li.appendChild(wrap);
   var ul=el('ul','pts');
   if(!r.pts.length){var e=el('li');e.appendChild(el('span','pt pt-ask','0'));e.appendChild(el('p',null,'Nothing to score yet: answer a question or two.'));ul.appendChild(e)}
   r.pts.forEach(function(p){

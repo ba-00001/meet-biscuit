@@ -221,6 +221,7 @@ transition:background-color var(--fast) var(--out)}
 .rname{margin:0;font:800 24px/1 var(--display);font-variation-settings:"wdth" 82,"opsz" 96;letter-spacing:-.02em}
 .rname a{text-decoration:none}.rname a:hover{text-decoration:underline}
 .rname small{font:500 12px/1 var(--sans);color:var(--steel);letter-spacing:0;margin-left:6px}
+.rfit{margin:6px 0 0;font:700 14px/1.3 var(--sans,system-ui);color:var(--yard,#2C5A37)}
 .rscore{font:800 14px/1 var(--display);padding:5px 9px;border:2px solid var(--ink);border-radius:999px;background:var(--paper)}
 .rscore.pos{background:var(--lime)}.rscore.neg{background:var(--pink)}
 .pts{grid-column:1/-1;list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
