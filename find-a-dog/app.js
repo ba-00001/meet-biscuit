@@ -158,7 +158,7 @@ function botGroup(id){var g=el('div','grp');g.appendChild(ava(id));return g}
 function greet(id,log){
   var dog=DOGS[id],g=botGroup(id),m=el('div','msg');
   var twins=LIST.filter(function(x){return x.name===dog.name}).length>1;
-  m.appendChild(el('p','msg-a','Hi, I’m '+dog.name+'!'+(twins?' (ID '+id+')':'')+' Ask me anything. I answer only from my shelter records and show where each answer comes from. If they don’t cover something, I’ll say so.'));
+  m.appendChild(el('p','msg-a','Hi, I’m '+dog.name+'!'+(twins?' (ID '+id+')':'')+' Pick any question below. I answer only from my shelter records and show where each answer comes from. If they don’t cover something, I’ll say so.'));
   g.appendChild(m);log.appendChild(g);
 }
 function ctaAsk(dog,id){
@@ -203,10 +203,10 @@ function reply(id,q){
   return ts.map(function(t){return bubble(id,resolve(DOGS[id],t))});
 }
 /* one conversation view: the drawer on the index, or the inline panel on a dog page.
-   box holds .chat-body, .chat-form (with its input) and the .qchip buttons. */
+   box holds .chat-body and the .qchip buttons, which are the only way to ask. */
 function ChatView(box){
-  var v={body:box.querySelector('.chat-body'),form:box.querySelector('.chat-form'),logs:{},cur:null};
-  v.input=v.form.querySelector('input');
+  var v={body:box.querySelector('.chat-body'),chips:box.querySelector('.chat-chips'),logs:{},cur:null};
+  v.first=function(){return v.chips?v.chips.querySelector('.qchip'):null};
   v.show=function(id){
     v.cur=id;
     for(var k in v.logs)v.logs[k].hidden=k!==id;
@@ -227,7 +227,6 @@ function ChatView(box){
       scrollToNode(me);
     },reduce?0:380);
   };
-  v.form.addEventListener('submit',function(ev){ev.preventDefault();v.ask(v.input.value);v.input.value=''});
   [].forEach.call(box.querySelectorAll('.qchip'),function(b){b.addEventListener('click',function(){v.ask(b.textContent)})});
   return v;
 }
@@ -237,8 +236,8 @@ function openChat(id,from){
   if(!dlgChat||!DOGS[id])return;
   nameEl.textContent=DOGS[id].name;
   avaEl.textContent='';avaEl.appendChild(ava(id));
-  dlgChat.show(id);dlgChat.input.value='';
-  openDialog(chat,from,coarse?title:dlgChat.input);
+  dlgChat.show(id);
+  openDialog(chat,from,coarse?title:(dlgChat.first()||title));
   dlgChat.body.scrollTop=dlgChat.body.scrollHeight;
 }
 if(CHAT_OK)d.getElementById('chat-close').addEventListener('click',function(){chat.close()});
@@ -250,7 +249,7 @@ if(askp&&DOGS[askp.getAttribute('data-dog')]){
   inl.show(aid);
   [].forEach.call(d.querySelectorAll('[data-ask-jump]'),function(a){a.addEventListener('click',function(ev){
     ev.preventDefault();askp.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
-    var t=coarse?d.getElementById('ask-h'):inl.input;try{t.focus({preventScroll:true})}catch(e){t.focus()}
+    var t=coarse?d.getElementById('ask-h'):(inl.first()||d.getElementById('ask-h'));try{t.focus({preventScroll:true})}catch(e){t.focus()}
   })});
 }
 
